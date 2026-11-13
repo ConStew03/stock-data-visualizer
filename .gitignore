@@ -1,0 +1,12 @@
+# Each person's own API key lives in .env and never goes to GitHub
+.env
+
+# Files Python creates when it runs
+__pycache__/
+*.pyc
+
+# Chart files the old Project 3 console version saved
+*_chart.html
+
+# Mac folder settings
+.DS_Store

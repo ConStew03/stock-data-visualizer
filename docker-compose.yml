@@ -1,7 +1,17 @@
+# Builds the image from our Dockerfile and runs the web app in a container.
+# Start it:  docker compose up -d --build     Stop it:  docker compose down
+# (No "version:" line: newer Docker ignores it and prints a warning.)
 services:
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: stock-visualizer-image
+    container_name: stock_visualizer
     ports:
-      - "5000:5000"
+      - "5005:5000"   # open http://localhost:5005 (Macs use port 5000 for AirPlay)
     volumes:
-      - .:/app
+      - .:/app        # share this folder with the container, so code changes show up right away
+    environment:
+      FLASK_DEBUG: "1"
+      ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY}   # read from the .env file

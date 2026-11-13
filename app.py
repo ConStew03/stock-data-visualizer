@@ -13,8 +13,9 @@ from stock_visualizer import (
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
 
-# Put your Alpha Vantage API key here or load it from an environment variable
-ALPHA_VANTAGE_API_KEY = "5VUJVPOP7XNNNDJR"
+# The Alpha Vantage API key comes from the .env file (docker-compose.yml passes it in).
+# Don't type a key into this file: the repo is public.
+ALPHA_VANTAGE_API_KEY = os.environ.get("ALPHA_VANTAGE_API_KEY", "").strip()
 
 def load_stock_symbols():
     symbols = []
