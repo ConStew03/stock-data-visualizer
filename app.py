@@ -37,16 +37,39 @@ def index():
     chart_svg = None
     
     if request.method == 'POST':
-        symbol = request.form.get('symbol')
-        chart_type = request.form.get('chart_type') # '1' for Line, '2' for Bar
-        time_series_choice = request.form.get('time_series') # '1', '2', or '3'
-        start_date_str = request.form.get('start_date')
-        end_date_str = request.form.get('end_date')
+        symbol = request.form.get('symbol', '').strip().upper()
+        chart_type = request.form.get('chart_type', '').strip() # '1' for Line, '2' for Bar
+        time_series_choice = request.form.get('time_series', '').strip() # '1', '2', or '3'
+        start_date_str = request.form.get('start_date', '').strip()
+        end_date_str = request.form.get('end_date', '').strip()
         
         # Validation checks
         if not symbol:
             flash("Please select a stock symbol.")
             return redirect(url_for('index'))
+        
+        if not chart_type:
+            flash("Please select a chart type.")
+            return redirect(url_for('index'))
+
+        if not time_series_choice:
+            flash("Please select a time range.")
+            return redirect(url_for('index'))
+
+        if not start_date_str or not end_date_str:
+            flash("Please enter both a start date and an end date.")
+            return redirect(url_for('index'))
+
+        # Validate chart type
+        if chart_type not in ["1", "2"]:
+            flash("Invalid chart type. Please select Bar or Line.")
+            return redirect(url_for('index'))
+
+        # Validate time series
+        if time_series_choice not in ["1", "2", "3", "4"]:
+            flash("Invalid time range. Please select a valid option.")
+            return redirect(url_for('index'))
+        
             
         try:
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
@@ -57,6 +80,11 @@ def index():
                 return redirect(url_for('index'))
         except ValueError:
             flash("Invalid date format.")
+            return redirect(url_for('index'))
+        
+        # Validate date range
+        if start_date >= end_date:
+            flash("Start date must be before end date.")
             return redirect(url_for('index'))
             
         # Map time series selection to Alpha Vantage parameters
@@ -71,8 +99,21 @@ def index():
         raw_data = fetch_stock_data(symbol, func_name, ALPHA_VANTAGE_API_KEY)
         print("DEBUG RAW DATA:", raw_data)
         
-        if not raw_data or time_series_key not in raw_data:
-            flash("Failed to retrieve data from Alpha Vantage. Check API key or ticker limit.")
+        # Handle API errors
+        if not raw_data:
+            flash("Unable to retrieve stock data. Please try again.")
+            return redirect(url_for('index'))
+
+        if "Error Message" in raw_data:
+            flash("Invalid stock symbol or stock data unavailable.")
+            return redirect(url_for('index'))
+
+        if "Note" in raw_data or "Information" in raw_data:
+            flash("Alpha Vantage API limit reached. Please try again later.")
+            return redirect(url_for('index'))
+
+        if time_series_key not in raw_data:
+            flash("Stock data was unavailable for this selection.")
             return redirect(url_for('index'))
             
         # Filter and sort data using your existing function
