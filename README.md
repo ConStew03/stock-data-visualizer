@@ -27,6 +27,13 @@ Notes:
 - Code changes show up without rebuilding: the folder is shared with the container, and Flask reloads itself in debug mode.
 - If you change `.env`, run `docker compose up -d` again so the container gets the new key.
 
+## Team
+
+* Connor: Docker setup and running the repo: adding everyone, combining our parts, final testing.
+* Owen: Stock data. Add the "Intraday" choice the professor's demo has, and show a clear message when the stock website sends back an error.
+* Joey: Error checks. If someone leaves a box empty or picks bad dates, the page should show a friendly message instead of crashing. (25 points).
+* Clyde: webpage look and instructions. Make the page look like the professor's demo video, and finish the README (instructions).
+
 ## Credits
 
 Osteen Katambwa wrote the Project 3 command-line version of this app and the first version of this Flask app.
