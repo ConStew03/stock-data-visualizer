@@ -75,6 +75,10 @@ def fetch_stock_data(symbol, function_name, api_key):
         "apikey": api_key,
         "outputsize": "compact"
     }
+
+    if function_name == "TIME_SERIES_INTRADAY":
+        params["interval"] = "5min"
+
     url = f"{base_url}?{urllib.parse.urlencode(params)}"
     
     print("\nFetching data from Alpha Vantage...")
@@ -85,8 +89,41 @@ def fetch_stock_data(symbol, function_name, api_key):
             return data
     except Exception as e:
         print(f"Failed to retrieve data: {e}")
-        return None
+        return {
+            "_request_error": "Could not connect to Alpha Vantage. Please try again."
+        }
 
+
+def get_api_error(raw_data, time_series_key):
+    if not raw_data or not isinstance(raw_data, dict):
+        return "Could not retrieve stock data. Please try again."
+
+    if "_request_error" in raw_data:
+        return raw_data["_request_error"]
+
+    if "Error Message" in raw_data:
+        return "Invalid stock request. Please try another stock."
+
+    message = str(raw_data.get("Information") or raw_data.get("Note") or "")
+
+    if message:
+        lower_message = message.lower()
+
+        if "premium" in lower_message or "subscription" in lower_message:
+            return "This data requires premium Alpha Vantage access."
+
+        if "rate limit" in lower_message or "call frequency" in lower_message or "25 requests" in lower_message:
+            return "API request limit reached. Please try again later."
+
+        if "api key" in lower_message or "apikey" in lower_message:
+            return "There is a problem with your API key."
+
+        return "Alpha Vantage returned an error. Please try again later."
+
+    if time_series_key not in raw_data:
+        return "No stock data was returned for this request."
+
+    return None
 
 def filter_and_sort_data(raw_data, time_series_key, start_date, end_date):
     if time_series_key not in raw_data:
@@ -101,7 +138,7 @@ def filter_and_sort_data(raw_data, time_series_key, start_date, end_date):
     sorted_dates = sorted(time_series.keys())
 
     for date_str in sorted_dates:
-        current_date = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+        current_date = datetime.datetime.strptime(date_str[:10], "%Y-%m-%d").date()
         if start_date <= current_date <= end_date:
             day_data = time_series[date_str]
             dates.append(date_str)
