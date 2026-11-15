@@ -30,3 +30,7 @@ Notes:
 ## Credits
 
 Osteen Katambwa wrote the Project 3 command-line version of this app and the first version of this Flask app.
+
+## Known limitation
+
+Alpha Vantage now treats Intraday data as a paid feature, so a free API key gets a "needs a paid plan" message for Intraday instead of a chart. Daily, Weekly and Monthly work with a free key. Daily only covers about the last 100 trading days.

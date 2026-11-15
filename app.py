@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, redirect, url_for, flash
 import csv
 import os
@@ -39,26 +38,50 @@ def index():
     chart_svg = None
 
     if request.method == 'POST':
-        symbol = request.form.get('symbol')
-        chart_type = request.form.get('chart_type') # '1' for Bar, '2' for Line
-        time_series_choice = request.form.get('time_series') # '1', '2', '3', or '4'
-        start_date_str = request.form.get('start_date')
-        end_date_str = request.form.get('end_date')
+        symbol = request.form.get('symbol', '').strip().upper()
+        chart_type = request.form.get('chart_type', '').strip()          # '1' = Bar, '2' = Line
+        time_series_choice = request.form.get('time_series', '').strip()  # '1' Intraday, '2' Daily, '3' Weekly, '4' Monthly
+        start_date_str = request.form.get('start_date', '').strip()
+        end_date_str = request.form.get('end_date', '').strip()
 
-        # Validation checks
+        # Validation checks: every field must be filled in and valid
         if not symbol:
             flash("Please select a stock symbol.")
+            return redirect(url_for('index'))
+
+        if symbol not in symbols:
+            flash("That stock symbol isn't in the list. Please pick one from the dropdown.")
+            return redirect(url_for('index'))
+
+        if not chart_type:
+            flash("Please select a chart type.")
+            return redirect(url_for('index'))
+
+        if chart_type not in ["1", "2"]:
+            flash("Invalid chart type. Please select Bar or Line.")
+            return redirect(url_for('index'))
+
+        if not time_series_choice:
+            flash("Please select a time series.")
+            return redirect(url_for('index'))
+
+        if time_series_choice not in ["1", "2", "3", "4"]:
+            flash("Invalid time series. Please select a valid option.")
+            return redirect(url_for('index'))
+
+        if not start_date_str or not end_date_str:
+            flash("Please enter both a start date and an end date.")
             return redirect(url_for('index'))
 
         try:
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-
-            if end_date <= start_date:
-                flash("Error: End Date must be strictly after Start Date.")
-                return redirect(url_for('index'))
         except ValueError:
-            flash("Invalid date format.")
+            flash("Invalid date format. Please use YYYY-MM-DD.")
+            return redirect(url_for('index'))
+
+        if end_date <= start_date:
+            flash("The end date must be after the start date.")
             return redirect(url_for('index'))
 
         # Map time series selection to Alpha Vantage parameters
@@ -68,24 +91,17 @@ def index():
             "3": ("TIME_SERIES_WEEKLY", "Weekly Time Series"),
             "4": ("TIME_SERIES_MONTHLY", "Monthly Time Series")
         }
-
-        if time_series_choice not in mapping:
-            flash("Please select a valid time series.")
-            return redirect(url_for('index'))
-
         func_name, time_series_key = mapping[time_series_choice]
 
-        # Fetch data using your existing function
         if not ALPHA_VANTAGE_API_KEY:
             flash("API key is missing. Check your .env file.")
             return redirect(url_for('index'))
 
+        # Fetch data using the Project 3 function
         raw_data = fetch_stock_data(symbol, func_name, ALPHA_VANTAGE_API_KEY)
-        print("DEBUG RAW DATA:", raw_data)
 
         # Check for errors returned by Alpha Vantage
         error = get_api_error(raw_data, time_series_key)
-
         if error:
             flash(error)
             return redirect(url_for('index'))

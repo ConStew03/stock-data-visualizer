@@ -109,11 +109,15 @@ def get_api_error(raw_data, time_series_key):
     if message:
         lower_message = message.lower()
 
-        if "premium" in lower_message or "subscription" in lower_message:
-            return "This data requires premium Alpha Vantage access."
+        # Check the limit messages first: they also mention Alpha Vantage's premium plans
+        if "per second" in lower_message or "sparingly" in lower_message:
+            return "Too many requests at once. Wait a few seconds and try again."
 
-        if "rate limit" in lower_message or "call frequency" in lower_message or "25 requests" in lower_message:
-            return "API request limit reached. Please try again later."
+        if "rate limit" in lower_message or "call frequency" in lower_message or "per day" in lower_message:
+            return "API request limit reached for today. Please try again tomorrow."
+
+        if "premium" in lower_message or "subscription" in lower_message:
+            return "This data needs a paid Alpha Vantage plan (Intraday does). Try Daily, Weekly or Monthly."
 
         if "api key" in lower_message or "apikey" in lower_message:
             return "There is a problem with your API key."
