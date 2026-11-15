@@ -1,3 +1,4 @@
+
 from flask import Flask, render_template, request, redirect, url_for, flash
 import csv
 import os
@@ -7,7 +8,8 @@ import pygal
 # Import your helper functions from stock_visualizer.py
 from stock_visualizer import (
     fetch_stock_data,
-    filter_and_sort_data
+    filter_and_sort_data,
+    get_api_error
 )
 
 app = Flask(__name__)
@@ -35,57 +37,70 @@ def load_stock_symbols():
 def index():
     symbols = load_stock_symbols()
     chart_svg = None
-    
+
     if request.method == 'POST':
         symbol = request.form.get('symbol')
-        chart_type = request.form.get('chart_type') # '1' for Line, '2' for Bar
-        time_series_choice = request.form.get('time_series') # '1', '2', or '3'
+        chart_type = request.form.get('chart_type') # '1' for Bar, '2' for Line
+        time_series_choice = request.form.get('time_series') # '1', '2', '3', or '4'
         start_date_str = request.form.get('start_date')
         end_date_str = request.form.get('end_date')
-        
+
         # Validation checks
         if not symbol:
             flash("Please select a stock symbol.")
             return redirect(url_for('index'))
-            
+
         try:
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-            
+
             if end_date <= start_date:
                 flash("Error: End Date must be strictly after Start Date.")
                 return redirect(url_for('index'))
         except ValueError:
             flash("Invalid date format.")
             return redirect(url_for('index'))
-            
+
         # Map time series selection to Alpha Vantage parameters
         mapping = {
-            "1": ("TIME_SERIES_DAILY", "Time Series (Daily)"),
-            "2": ("TIME_SERIES_WEEKLY", "Weekly Time Series"),
-            "3": ("TIME_SERIES_MONTHLY", "Monthly Time Series")
+            "1": ("TIME_SERIES_INTRADAY", "Time Series (5min)"),
+            "2": ("TIME_SERIES_DAILY", "Time Series (Daily)"),
+            "3": ("TIME_SERIES_WEEKLY", "Weekly Time Series"),
+            "4": ("TIME_SERIES_MONTHLY", "Monthly Time Series")
         }
-        func_name, time_series_key = mapping.get(time_series_choice, mapping["1"])
-        
+
+        if time_series_choice not in mapping:
+            flash("Please select a valid time series.")
+            return redirect(url_for('index'))
+
+        func_name, time_series_key = mapping[time_series_choice]
+
         # Fetch data using your existing function
+        if not ALPHA_VANTAGE_API_KEY:
+            flash("API key is missing. Check your .env file.")
+            return redirect(url_for('index'))
+
         raw_data = fetch_stock_data(symbol, func_name, ALPHA_VANTAGE_API_KEY)
         print("DEBUG RAW DATA:", raw_data)
-        
-        if not raw_data or time_series_key not in raw_data:
-            flash("Failed to retrieve data from Alpha Vantage. Check API key or ticker limit.")
+
+        # Check for errors returned by Alpha Vantage
+        error = get_api_error(raw_data, time_series_key)
+
+        if error:
+            flash(error)
             return redirect(url_for('index'))
-            
+
         # Filter and sort data using your existing function
         dates, open_p, high_p, low_p, close_p = filter_and_sort_data(
             raw_data, time_series_key, start_date, end_date
         )
-        
+
         if not dates:
             flash("No data found for the selected date range.")
             return redirect(url_for('index'))
-            
+
         # Generate Pygal chart as SVG string instead of file/browser
-        chart = pygal.Line(x_label_rotation=45) if chart_type == "1" else pygal.Bar(x_label_rotation=45)
+        chart = pygal.Bar(x_label_rotation=45) if chart_type == "1" else pygal.Line(x_label_rotation=45)
         chart.title = f"Stock Data for {symbol}: {start_date} to {end_date}"
         chart.x_labels = dates
 
